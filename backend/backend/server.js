@@ -4,8 +4,28 @@ const { Pool } = require('pg');
 const crypto = require('crypto');
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }));
 app.use(express.json());
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// Rate limiting
+const requestCounts = {};
+app.use((req, res, next) => {
+  const ip = req.ip;
+  const now = Date.now();
+  if (!requestCounts[ip]) requestCounts[ip] = [];
+  requestCounts[ip] = requestCounts[ip].filter(t => now - t < 60000);
+  if (requestCounts[ip].length > 100) return res.status(429).json({ error: 'Too many requests' });
+  requestCounts[ip].push(now);
+  next();
+});
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
