@@ -1,16 +1,40 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: inuni-postgres
+  backend:
+    build: ./backend/backend
+    container_name: inuni-backend
     restart: always
-    environment:
-      POSTGRES_DB: inuni
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dreamteam
     ports:
-      - "5433:5432"
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5433
+      - DB_NAME=inuni
+      - DB_USER=postgres
+      - DB_PASSWORD=dreamteam
+      - PORT=8080
+    depends_on: []
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./backend/backend:/app
+      - /app/node_modules
+      - uploads_data:/app/uploads
+    networks:
+      - inuni-net
+
+  frontend:
+    build: ./inuni-frontend
+    container_name: inuni-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - inuni-net
+
+networks:
+  inuni-net:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  uploads_data:
